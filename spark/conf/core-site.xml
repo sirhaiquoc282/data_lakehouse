@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <n>fs.s3a.endpoint</n>
+    <value>http://minio:9000</value>
+  </property>
+  <property>
+    <n>fs.s3a.access.key</n>
+    <value>minioadmin</value>
+  </property>
+  <property>
+    <n>fs.s3a.secret.key</n>
+    <value>minioadmin123</value>
+  </property>
+  <property>
+    <n>fs.s3a.path.style.access</n>
+    <value>true</value>
+  </property>
+  <property>
+    <n>fs.s3a.impl</n>
+    <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+  </property>
+  <property>
+    <n>fs.s3a.connection.ssl.enabled</n>
+    <value>false</value>
+  </property>
+  <property>
+    <n>fs.s3a.aws.credentials.provider</n>
+    <value>org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</value>
+  </property>
+  <property>
+    <n>fs.s3a.multipart.size</n>
+    <value>67108864</value>
+  </property>
+  <property>
+    <n>fs.s3a.fast.upload</n>
+    <value>true</value>
+  </property>
+
+</configuration>

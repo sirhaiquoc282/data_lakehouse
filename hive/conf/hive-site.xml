@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:postgresql://postgres:5432/metastore</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>org.postgresql.Driver</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionUserName</name>
+    <value>postgres</value>
+  </property>
+
+  <property>
+    <name>javax.jdo.option.ConnectionPassword</name>
+    <value>postgres123</value>
+  </property>
+
+  <property>
+    <name>datanucleus.schema.autoCreateAll</name>
+    <value>true</value>
+  </property>
+  <property>
+    <name>hive.metastore.schema.verification</name>
+    <value>false</value>
+  </property>
+
+  <property>
+    <name>hive.metastore.warehouse.dir</name>
+    <value>s3a://lakehouse/</value>
+  </property>
+
+  <property>
+    <name>hive.metastore.uris</name>
+    <value>thrift://metastore:9083</value>
+  </property>
+
+  <property>
+    <name>hive.metastore.sasl.enabled</name>
+    <value>false</value>
+  </property>
+
+  <property>
+    <name>hive.stats.autogather</name>
+    <value>false</value>
+  </property>
+  <property>
+    <name>hive.security.authorization.enabled</name>
+    <value>true</value>
+  </property>
+
+</configuration>

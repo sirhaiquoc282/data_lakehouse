@@ -1,0 +1,263 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    hostname: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    volumes:
+      - minio_data:/data
+    networks:
+      - datalakehouse-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set myminio http://minio:9000 minioadmin minioadmin123;
+        mc mb --ignore-existing myminio/lakehouse;
+        echo 'Buckets created.';
+      "
+    networks:
+      - datalakehouse-net
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    hostname: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_MULTIPLE_DATABASES: metastore,ranger
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+    networks:
+      - datalakehouse-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  metastore:
+    build:
+      context: ./hive
+      dockerfile: Dockerfile
+    container_name: metastore
+    hostname: metastore
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "9083:9083"
+    networks:
+      - datalakehouse-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9083"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+
+  spark-master:
+    build:
+      context: ./spark
+      dockerfile: Dockerfile
+    container_name: spark-master
+    hostname: spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    environment:
+      SPARK_MASTER_HOST: spark-master
+      # S3/MinIO
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
+    ports:
+      - "7177:7077"
+      - "8180:8080"
+      - "6166:6066"
+      - "4140:4040"
+    # volumes:
+    #   - spark_data:/data
+    #   - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+    #   - ./spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
+    #   - ./spark/conf/core-site.xml:/opt/spark/conf/core-site.xml
+    networks:
+      - datalakehouse-net
+
+  spark-worker-1:
+    build:
+      context: ./spark
+      dockerfile: Dockerfile
+    container_name: spark-worker-1
+    hostname: spark-worker-1
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    # environment:
+    #   SPARK_WORKER_CORES: 2
+    #   SPARK_WORKER_MEMORY: 2g
+    #   AWS_ACCESS_KEY_ID: minioadmin
+    #   AWS_SECRET_ACCESS_KEY: minioadmin123
+    # volumes:
+    #   - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+    #   - ./spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
+    #   - ./spark/conf/core-site.xml:/opt/spark/conf/core-site.xml
+    networks:
+      - datalakehouse-net
+
+  spark-worker-2:
+    build:
+      context: ./spark
+      dockerfile: Dockerfile
+    container_name: spark-worker-2
+    hostname: spark-worker-2
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    # environment:
+    #   SPARK_WORKER_CORES: 2
+    #   SPARK_WORKER_MEMORY: 2g
+    #   AWS_ACCESS_KEY_ID: minioadmin
+    #   AWS_SECRET_ACCESS_KEY: minioadmin123
+    # volumes:
+    #   - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+    #   - ./spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
+    #   - ./spark/conf/core-site.xml:/opt/spark/conf/core-site.xml
+    networks:
+      - datalakehouse-net
+
+  spark-client:
+    build:
+      context: ./spark
+      dockerfile: Dockerfile
+    container_name: spark-client
+    command: sleep infinity
+    depends_on:
+      - spark-master
+    # environment:
+    #   AWS_ACCESS_KEY_ID: minioadmin
+    #   AWS_SECRET_ACCESS_KEY: minioadmin123
+    volumes:
+      - spark_data:/data
+    #   - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+    #   - ./spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
+    #   - ./spark/conf/core-site.xml:/opt/spark/conf/core-site.xml
+    networks:
+      - datalakehouse-net
+
+  trino:
+    image: trinodb/trino:435
+    container_name: trino
+    hostname: trino
+    ports:
+      - "8085:8080"   # Trino Web UI
+    volumes:
+      - ./trino/etc:/etc/trino
+    networks:
+      - datalakehouse-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  # ─────────────────────────────────────────────
+  # APACHE RANGER – Admin Server
+  # ─────────────────────────────────────────────
+#   ranger-admin:
+#     build:
+#       context: ./ranger
+#       dockerfile: Dockerfile
+#     container_name: ranger-admin
+#     hostname: ranger-admin
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     environment:
+#       RANGER_DB_HOST: postgres
+#       RANGER_DB_PORT: 5432
+#       RANGER_DB_NAME: ranger
+#       RANGER_DB_USER: postgres
+#       RANGER_DB_PASS: postgres123
+#       RANGER_ADMIN_PASSWORD: rangerR0cks!
+#     ports:
+#       - "6080:6080"   # Ranger Admin Web UI
+#     volumes:
+#       - ./ranger/conf/install.properties:/opt/ranger/install.properties
+#       - ranger_logs:/var/log/ranger
+#     networks:
+#       - datalakehouse-net
+#     healthcheck:
+#       test: ["CMD", "curl", "-f", "http://localhost:6080/login.jsp"]
+#       interval: 30s
+#       timeout: 15s
+#       retries: 15
+
+#   # ─────────────────────────────────────────────
+#   # APACHE RANGER – Trino Plugin (UserSync)
+#   # ─────────────────────────────────────────────
+#   ranger-usersync:
+#     build:
+#       context: ./ranger
+#       dockerfile: Dockerfile.usersync
+#     image: ranger-usersync:latest
+#     container_name: ranger-usersync
+#     hostname: ranger-usersync
+#     depends_on:
+#       ranger-admin:
+#         condition: service_healthy
+#     environment:
+#       RANGER_ADMIN_URL: http://ranger-admin:6080
+#       SYNC_SOURCE: unix
+#     networks:
+#       - datalakehouse-net
+
+#   # ─────────────────────────────────────────────
+#   # JUPYTER NOTEBOOK (optional – for development)
+#   # ─────────────────────────────────────────────
+#   jupyter:
+#     image: jupyter/pyspark-notebook:latest
+#     container_name: jupyter
+#     hostname: jupyter
+#     depends_on:
+#       - spark-master
+#       - trino
+#     environment:
+#       JUPYTER_ENABLE_LAB: "yes"
+#       SPARK_MASTER: spark://spark-master:7077
+#       AWS_ACCESS_KEY_ID: minioadmin
+#       AWS_SECRET_ACCESS_KEY: minioadmin123
+#     ports:
+#       - "8888:8888"
+#     volumes:
+#       - ./notebooks:/home/jovyan/work
+#       - ./spark/conf/spark-defaults.conf:/usr/local/spark/conf/spark-defaults.conf
+#       - ./spark/conf/hive-site.xml:/usr/local/spark/conf/hive-site.xml
+#       - ./spark/conf/core-site.xml:/usr/local/spark/conf/core-site.xml
+#     networks:
+#       - datalakehouse-net
+
+networks:
+  datalakehouse-net:
+    driver: bridge
+    attachable: true
+
+volumes:
+  minio_data:
+  postgres_data:
+  spark_data:

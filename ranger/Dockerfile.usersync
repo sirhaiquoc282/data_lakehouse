@@ -1,0 +1,8 @@
+FROM apache/ranger:2.4.0
+
+USER root
+
+COPY entrypoint-usersync.sh /entrypoint-usersync.sh
+RUN chmod +x /entrypoint-usersync.sh
+
+ENTRYPOINT ["/entrypoint-usersync.sh"]
