@@ -1,8 +1,13 @@
 #!/bin/bash
 set -e
 
-echo "==> Initialising Hive schema in PostgreSQL..."
-/opt/hive/bin/schematool -dbType postgres -initOrUpgradeSchema  4.0.0 --verbose || true
+echo "Checking schema..."
+if ! schematool -dbType postgres -info > /dev/null 2>&1; then
+echo "Initializing schema..."
+schematool -dbType postgres -initSchema
+else
+echo "Schema already exists"
+fi
 
-echo "==> Starting Hive Metastore..."
-exec /opt/hive/bin/hive --service metastore
+echo "Starting Hive Metastore..."
+exec hive --service metastore

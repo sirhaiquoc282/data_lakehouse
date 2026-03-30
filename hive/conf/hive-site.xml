@@ -4,7 +4,7 @@
 
   <property>
     <name>javax.jdo.option.ConnectionURL</name>
-    <value>jdbc:postgresql://postgres:5432/metastore</value>
+    <value>jdbc:postgresql://postgres:5432/postgres</value>
   </property>
 
   <property>
@@ -33,12 +33,12 @@
 
   <property>
     <name>hive.metastore.warehouse.dir</name>
-    <value>s3a://lakehouse/</value>
+    <value>s3a://lakehouse/metastore</value>
   </property>
 
   <property>
     <name>hive.metastore.uris</name>
-    <value>thrift://metastore:9083</value>
+    <value>thrift://hive:9083</value>
   </property>
 
   <property>
