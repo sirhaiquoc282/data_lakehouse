@@ -117,6 +117,7 @@ services:
     #   AWS_SECRET_ACCESS_KEY: minioadmin123
     volumes:
       - spark_data:/data
+      - ./spark/src:/opt/spark/src
     #   - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
     #   - ./spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
     #   - ./spark/conf/core-site.xml:/opt/spark/conf/core-site.xml
@@ -139,37 +140,34 @@ services:
       timeout: 10s
       retries: 10
 
-  # ─────────────────────────────────────────────
-  # APACHE RANGER – Admin Server
-  # ─────────────────────────────────────────────
-#   ranger-admin:
-#     build:
-#       context: ./ranger
-#       dockerfile: Dockerfile
-#     container_name: ranger-admin
-#     hostname: ranger-admin
-#     depends_on:
-#       postgres:
-#         condition: service_healthy
-#     environment:
-#       RANGER_DB_HOST: postgres
-#       RANGER_DB_PORT: 5432
-#       RANGER_DB_NAME: ranger
-#       RANGER_DB_USER: postgres
-#       RANGER_DB_PASS: postgres123
-#       RANGER_ADMIN_PASSWORD: rangerR0cks!
-#     ports:
-#       - "6080:6080"   # Ranger Admin Web UI
-#     volumes:
-#       - ./ranger/conf/install.properties:/opt/ranger/install.properties
-#       - ranger_logs:/var/log/ranger
-#     networks:
-#       - datalakehouse-net
-#     healthcheck:
-#       test: ["CMD", "curl", "-f", "http://localhost:6080/login.jsp"]
-#       interval: 30s
-#       timeout: 15s
-#       retries: 15
+  ranger-admin:
+    build:
+      context: ./ranger
+      dockerfile: Dockerfile
+    container_name: ranger-admin
+    hostname: ranger-admin
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
+    # environment:
+    #   RANGER_DB_HOST: postgres
+    #   RANGER_DB_PORT: 5432
+    #   RANGER_DB_NAME: ranger
+    #   RANGER_DB_USER: postgres
+    #   RANGER_DB_PASS: postgres123
+    #   RANGER_ADMIN_PASSWORD: rangerR0cks!
+    ports:
+      - "6080:6080"
+    volumes:
+      # - ./ranger/conf/install.properties:/opt/ranger/install.properties
+      - ranger_logs:/var/log/ranger
+    networks:
+      - datalakehouse-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6080/login.jsp"]
+      interval: 30s
+      timeout: 15s
+      retries: 15
 
 #   # ─────────────────────────────────────────────
 #   # APACHE RANGER – Trino Plugin (UserSync)
@@ -224,3 +222,4 @@ volumes:
   minio_data:
   postgres_data:
   spark_data:
+  ranger_logs:
