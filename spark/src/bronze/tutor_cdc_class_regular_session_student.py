@@ -14,18 +14,18 @@ logging.basicConfig(
 logger = logging.getLogger("bronze.class_regular_session_student")
 
 KAFKA_BOOTSTRAP_SERVERS = "172.25.80.136:9092"
-KAFKA_TOPIC             = "edupia_cdp.raw_tutor.class_regular_session_student"
+KAFKA_TOPIC             = "lakehouse.tutor.class_regular_session_student"
 KAFKA_CONSUMER_GROUP    = "spark-bronze-class_regular_session_student"
 KAFKA_STARTING_OFFSETS  = "earliest"
 
-S3_BRONZE_PATH          = "s3a://lakehouse/bronze/tutor/class_regular_session_student"
-S3_CHECKPOINT_PATH      = "s3a://lakehouse/_checkpoints/bronze/tutor/class_regular_session_student"
+S3_BRONZE_PATH          = "s3a://lakehouse/warehouse/bronze.db/tutor/class_regular_session_student"
+S3_CHECKPOINT_PATH      = "s3a://lakehouse/warehouse/_checkpoints/bronze/tutor/class_regular_session_student"
 
 HIVE_DATABASE           = "bronze"
 HIVE_TABLE              = "tutor_class_regular_session_student"
 
 TRIGGER_INTERVAL        = "60 seconds"
-MAX_OFFSETS_PER_TRIGGER = 50_000
+MAX_OFFSETS_PER_TRIGGER = 200_000
 
 def build_spark() -> SparkSession:
     spark = (

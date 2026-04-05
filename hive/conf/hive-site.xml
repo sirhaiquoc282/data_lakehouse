@@ -33,7 +33,7 @@
 
   <property>
     <name>hive.metastore.warehouse.dir</name>
-    <value>s3a://lakehouse/metastore</value>
+    <value>s3a://lakehouse/warehouse</value>
   </property>
 
   <property>
@@ -50,6 +50,7 @@
     <name>hive.stats.autogather</name>
     <value>false</value>
   </property>
+  
   <property>
     <name>hive.security.authorization.enabled</name>
     <value>true</value>

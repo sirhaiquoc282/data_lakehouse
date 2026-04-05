@@ -3,15 +3,15 @@
 <configuration>
   <property>
     <name>fs.s3a.endpoint</name>
-    <value>http://minio:9000</value>
+    <value>https://minio.edupia.com.vn:9005</value>
   </property>
   <property>
     <name>fs.s3a.access.key</name>
-    <value>minioadmin</value>
+    <value>RANNKz5iDjCjwuSMERHG</value>
   </property>
   <property>
     <name>fs.s3a.secret.key</name>
-    <value>minioadmin123</value>
+    <value>s09X8CONsQAX317NxP9txW05rRXayv3jjtxFe6Vv</value>
   </property>
   <property>
     <name>fs.s3a.path.style.access</name>
@@ -23,7 +23,7 @@
   </property>
   <property>
     <name>fs.s3a.connection.ssl.enabled</name>
-    <value>false</value>
+    <value>true</value>
   </property>
   <property>
     <name>fs.s3a.aws.credentials.provider</name>
