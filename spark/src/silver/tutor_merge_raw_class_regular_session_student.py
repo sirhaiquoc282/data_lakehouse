@@ -14,12 +14,12 @@ logging.basicConfig(
 logger = logging.getLogger("silver.class_regular_session_student")
 
 # Bronze source
-S3_BRONZE_PATH  = "s3a://lakehouse/bronze/tutor/class_regular_session_student"
+S3_BRONZE_PATH  = "s3a://lakehouse/warehouse/bronze.db/tutor/class_regular_session_student"
 
 # Silver target
 SILVER_DATABASE = "silver"
 SILVER_TABLE    = "tutor_class_regular_session_student"
-S3_SILVER_PATH  = "s3a://lakehouse/silver/tutor/class_regular_session_student"
+S3_SILVER_PATH  = "s3a://lakehouse/warehouse/silver.db/tutor/class_regular_session_student"
 
 # Merge key
 PRIMARY_KEY     = "id"
@@ -39,13 +39,13 @@ def parse_args():
     parser.add_argument(
         "--start-date",
         type=str,
-        default=None,
+        default='2026-04-02',
         help="Ngày bắt đầu đọc Bronze (YYYY-MM-DD). Mặc định: hôm qua",
     )
     parser.add_argument(
         "--end-date",
         type=str,
-        default=None,
+        default='2026-04-03',
         help="Ngày kết thúc đọc Bronze (YYYY-MM-DD, inclusive). Mặc định: hôm nay",
     )
     return parser.parse_args()

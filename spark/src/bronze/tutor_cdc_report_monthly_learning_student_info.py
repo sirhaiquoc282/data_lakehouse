@@ -14,12 +14,12 @@ logging.basicConfig(
 logger = logging.getLogger("bronze.report_monthly_learning_student_info")
 
 KAFKA_BOOTSTRAP_SERVERS = "172.25.80.136:9092"
-KAFKA_TOPIC             = "edupia_cdp.raw_tutor.report_monthly_learning_student_info"
+KAFKA_TOPIC             = "lakehouse.tutor.report_monthly_learning_student_info"
 KAFKA_CONSUMER_GROUP    = "spark-bronze-report_monthly_learning_student_info"
 KAFKA_STARTING_OFFSETS  = "earliest"
 
-S3_BRONZE_PATH          = "s3a://lakehouse/bronze/tutor/report_monthly_learning_student_info"
-S3_CHECKPOINT_PATH      = "s3a://lakehouse/_checkpoints/bronze/tutor/report_monthly_learning_student_info"
+S3_BRONZE_PATH          = "s3a://lakehouse/warehouse/bronze.db/tutor/report_monthly_learning_student_info"
+S3_CHECKPOINT_PATH      = "s3a://lakehouse/warehouse/_checkpoints/bronze.db/tutor/report_monthly_learning_student_info"
 
 HIVE_DATABASE           = "bronze"
 HIVE_TABLE              = "tutor_report_monthly_learning_student_info"

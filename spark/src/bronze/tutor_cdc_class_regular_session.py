@@ -11,12 +11,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bronze.class_regular_session")
 KAFKA_BOOTSTRAP_SERVERS = "172.25.80.136:9092"
-KAFKA_TOPIC             = "edupia_cdp.raw_tutor.class_regular_session"
+KAFKA_TOPIC             = "lakehouse.tutor.class_regular_session"
 KAFKA_CONSUMER_GROUP    = "spark-bronze-class_regular_session"
 KAFKA_STARTING_OFFSETS  = "earliest"
 
-S3_BRONZE_PATH          = "s3a://lakehouse/bronze/tutor/class_regular_session"
-S3_CHECKPOINT_PATH      = "s3a://lakehouse/_checkpoints/bronze/tutor/class_regular_session"
+S3_BRONZE_PATH          = "s3a://lakehouse/warehouse/bronze.db/tutor/class_regular_session"
+S3_CHECKPOINT_PATH      = "s3a://lakehouse/warehouse/_checkpoints/bronze.db/tutor/class_regular_session"
 
 HIVE_DATABASE           = "bronze"
 HIVE_TABLE              = "tutor_class_regular_session"

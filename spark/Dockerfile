@@ -2,7 +2,7 @@ FROM apache/spark:3.5.8-scala2.12-java11-python3-r-ubuntu
 
 USER root
 
-RUN apt-get update && apt-get install -y curl vim && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl vim python3-pip && pip3 install delta-spark==3.3.2 && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.4/hadoop-aws-3.3.4.jar \
     -o /opt/spark/jars/hadoop-aws-3.3.4.jar && \

@@ -23,15 +23,39 @@
   </property>
   <property>
     <name>fs.s3a.connection.ssl.enabled</name>
-    <value>true</value>
+    <value>false</value>
   </property>
   <property>
     <name>fs.s3a.aws.credentials.provider</name>
     <value>org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</value>
   </property>
   <property>
+    <name>fs.s3a.threads.max</name>
+    <value>64</value>
+  </property>
+  <property>
+    <name>fs.s3a.threads.keepalivetime</name>
+    <value>60</value>
+  </property>
+  <property>
+    <name>fs.s3a.max.total.tasks</name>
+    <value>32</value>
+  </property>
+  <property>
+    <name>fs.s3a.executor.capacity</name>
+    <value>16</value>
+  </property>
+  <property>
     <name>fs.s3a.multipart.size</name>
-    <value>67108864</value>
+    <value>64M</value>
+  </property>
+  <property>
+    <name>fs.s3a.multipart.threshold</name>
+    <value>128M</value>
+  </property>
+  <property>
+    <name>fs.s3a.multiobjectdelete.enable</name>
+    <value>true</value>
   </property>
   <property>
     <name>fs.s3a.fast.upload</name>

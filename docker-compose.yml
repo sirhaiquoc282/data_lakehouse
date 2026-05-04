@@ -1,4 +1,101 @@
+x-kafka-common: &kafka-common
+    image: confluentinc/cp-kafka:7.6.5
+    networks:
+        - datalakehouse-net
+    environment: &kafka-common-env
+        KAFKA_PROCESS_ROLES: broker,controller
+        KAFKA_CONTROLLER_QUORUM_VOTERS: "0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093"
+        CLUSTER_ID: "2qVoY3q1Q5O5hH1XVvqLmg"
+        KAFKA_LISTENERS: "CONTROLLER://:9093,INTERNAL://:29092,DOCKER://:9092,EXTERNAL://0.0.0.0:9094"
+        KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,DOCKER:PLAINTEXT,EXTERNAL:SASL_PLAINTEXT"
+        KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+        KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+        KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+        KAFKA_AUTO_CREATE_TOPICS_ENABLED: "true"
+        KAFKA_NUM_PARTITIONS: 3
+        KAFKA_SASL_ENABLED_MECHANISMS: "PLAIN"
+        KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: "PLAIN"
+        KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf"
 services:
+  kafka-0:
+    <<: *kafka-common
+    container_name: kafka-0
+    hostname: kafka-0
+    volumes:
+        - kafka-data-0:/var/lib/kafka/data
+        - ./kafka/config/kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
+        # - ./jmx-exporter/configs/kafka-metrics.yml:/opt/jmx_exporter/kafka-metrics.yml:ro
+        # - ./jmx-exporter/jmx_prometheus_javaagent-0.18.0.jar:/opt/jmx_exporter/jmx_prometheus_javaagent-0.18.0.jar:ro
+    ports:
+        - "9094:9094"
+        - "9092:9092"
+    environment:
+        <<: *kafka-common-env
+        KAFKA_NODE_ID: 0
+        KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-0:29092,DOCKER://kafka-0:9092,EXTERNAL://localhost:9094"
+
+  kafka-1:
+    <<: *kafka-common
+    container_name: kafka-1
+    hostname: kafka-1
+    volumes:
+        - kafka-data-1:/var/lib/kafka/data
+        - ./kafka/config/kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
+        # - ./jmx-exporter/configs/kafka-metrics.yml:/opt/jmx_exporter/kafka-metrics.yml:ro
+        # - ./jmx-exporter/jmx_prometheus_javaagent-0.18.0.jar:/opt/jmx_exporter/jmx_prometheus_javaagent-0.18.0.jar:ro
+    ports:
+        - "9095:9094"
+        - "9192:9092"
+    environment:
+        <<: *kafka-common-env
+        KAFKA_NODE_ID: 1
+        KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-1:29092,DOCKER://kafka-1:9092,EXTERNAL://localhost:9095"
+
+  kafka-2:
+    <<: *kafka-common
+    container_name: kafka-2
+    hostname: kafka-2
+    volumes:
+        - kafka-data-2:/var/lib/kafka/data
+        - ./kafka/config/kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
+        # - ./jmx-exporter/configs/kafka-metrics.yml:/opt/jmx_exporter/kafka-metrics.yml:ro
+        # - ./jmx-exporter/jmx_prometheus_javaagent-0.18.0.jar:/opt/jmx_exporter/jmx_prometheus_javaagent-0.18.0.jar:ro
+    ports:
+        - "9096:9094"
+        - "9292:9092"
+    environment:
+        <<: *kafka-common-env
+        KAFKA_NODE_ID: 2
+        KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka-2:29092,DOCKER://kafka-2:9092,EXTERNAL://localhost:9096"
+  redpanda:
+    image: docker.redpanda.com/redpandadata/console:v2.3.8
+    container_name: redpanda
+    hostname: redpanda
+    restart: on-failure
+
+    entrypoint: /bin/sh
+    command: >
+        -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml && /app/console"
+
+    environment:
+        CONFIG_FILEPATH: /tmp/config.yml
+        CONSOLE_CONFIG_FILE: |
+            kafka:
+                brokers:
+                - kafka-0:9092
+                - kafka-1:9092
+                - kafka-2:9092
+            connect:
+                enabled: true
+                clusters:
+                  - name: debezium
+                    url: http://kafka-connect:8083
+
+    ports:
+        - "9080:8080"
+    networks:
+      - datalakehouse-net
   minio:
     image: minio/minio:latest
     container_name: minio
@@ -15,10 +112,10 @@ services:
     networks:
       - datalakehouse-net
 
-  postgres:
+  metastoredb:
     image: postgres:15
-    container_name: postgres
-    hostname: postgres
+    container_name: metastoredb
+    hostname: metastoredb
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres123
@@ -35,10 +132,62 @@ services:
       dockerfile: Dockerfile
     container_name: hive
     hostname: hive
+    volumes:
+      - ./hive/conf/hive-site.xml:/opt/hive/conf/hive-site.xml
+      - ./hive/conf/core-site.xml:/opt/hive/conf/core-site.xml
+    environment:
+      DB_DRIVER: postgres
+      SERVICE_NAME: metastore
     ports:
       - "9083:9083"
     networks:
       - datalakehouse-net
+
+  keycloakdb:
+    image: postgres:15
+    container_name: keycloakdb
+    hostname: keycloakdb
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    networks:
+      - datalakehouse-net
+  
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6
+    container_name: keycloak
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      # Database
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://metastoredb:5432/keycloak
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres123
+      # Admin
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      # Hostname
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: true
+      # Logging
+      KC_LOG_LEVEL: INFO
+    ports:
+      - "8088:8080"
+    networks:
+      - datalakehouse-net
+
+    
+
+
+    
 
 
   spark-master:
@@ -50,9 +199,6 @@ services:
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
     environment:
       SPARK_MASTER_HOST: spark-master
-      # S3/MinIO
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin123
     ports:
       - "7177:7077"
       - "8180:8080"
@@ -60,85 +206,103 @@ services:
       - "4140:4040"
     volumes:
       - spark_data:/data
-    #   - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
-    #   - ./spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
-    #   - ./spark/conf/core-site.xml:/opt/spark/conf/core-site.xml
-    networks:
-      - datalakehouse-net
-
-  spark-worker-1:
-    build:
-      context: ./spark
-      dockerfile: Dockerfile
-    container_name: spark-worker-1
-    hostname: spark-worker-1
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
-    depends_on:
-      - spark-master
-    environment:
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin123
-    # volumes:
-    #   - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
-    #   - ./spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
-    #   - ./spark/conf/core-site.xml:/opt/spark/conf/core-site.xml
-    networks:
-      - datalakehouse-net
-
-  spark-worker-2:
-    build:
-      context: ./spark
-      dockerfile: Dockerfile
-    container_name: spark-worker-2
-    hostname: spark-worker-2
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
-    depends_on:
-      - spark-master
-    environment:
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin123
-    # volumes:
-    #   - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
-    #   - ./spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
-    #   - ./spark/conf/core-site.xml:/opt/spark/conf/core-site.xml
-    networks:
-      - datalakehouse-net
-
-  spark-client:
-    build:
-      context: ./spark
-      dockerfile: Dockerfile
-    container_name: spark-client
-    command: sleep infinity
-    depends_on:
-      - spark-master
-    # environment:
-    #   AWS_ACCESS_KEY_ID: minioadmin
-    #   AWS_SECRET_ACCESS_KEY: minioadmin123
-    volumes:
-      - spark_data:/data
       - ./spark/src:/opt/spark/src
-    #   - ./spark/conf/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
-    #   - ./spark/conf/hive-site.xml:/opt/spark/conf/hive-site.xml
-    #   - ./spark/conf/core-site.xml:/opt/spark/conf/core-site.xml
+    networks:
+      - datalakehouse-net
+      
+  trino-coordinator:
+    image: trinodb/trino:480
+    container_name: trino-coordinator
+    hostname: trino-coordinator
+    ports:
+      - "8085:8080"
+      - "8443:8443"
+    volumes:
+      - ./trino/coordinator:/etc/trino
+    networks:
+      - datalakehouse-net
+  
+  trino-worker-1:
+    image: trinodb/trino:480
+    container_name: trino-worker-1
+    hostname: trino-worker-1
+    volumes:
+      - ./trino/worker1:/etc/trino
+    networks:
+      - datalakehouse-net
+    depends_on:
+      - trino-coordinator
+  trino-worker-2:
+    image: trinodb/trino:480
+    container_name: trino-worker-2
+    hostname: trino-worker-2
+    volumes:
+      - ./trino/worker2:/etc/trino
+    networks:
+      - datalakehouse-net
+    depends_on:
+      - trino-coordinator
+
+  kafka-connect:
+    build:
+      context: ./kafka-connect
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    container_name: kafka-connect
+    hostname: kafka-connect
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka-0:29092,kafka-1:29092,kafka-2:29092
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: connect-cluster
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: connect-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
     networks:
       - datalakehouse-net
 
-  trino:
-    image: trinodb/trino:435
-    container_name: trino
-    hostname: trino
+  console:
+    image: docker.redpanda.com/redpandadata/console:v2.3.8
+    container_name: console
+    hostname: console
+    restart: on-failure
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console"
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["172.16.7.252:30092"]
+        connect:
+          enabled: true
+          clusters:
+            - name: debezium
+              url: http://172.16.7.252:32083
     ports:
-      - "8085:8080"   # Trino Web UI
-    volumes:
-      - ./trino/etc:/etc/trino
+      - "8089:8080"
     networks:
       - datalakehouse-net
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
-      interval: 30s
-      timeout: 10s
-      retries: 10
+  # starburst:
+  #   image: starburstdata/starburst-enterprise:479-e.3
+  #   container_name: starburst
+  #   hostname: starburst
+  #   ports:
+  #     - "8088:8080"
+  #     - "8444:8443"
+  #   volumes:
+  #     - ./starburst/etc:/etc/starburst
+  #     - D:\trino-certs\trino.p12:/certs/trino.p12
+  #   networks:
+  #     - datalakehouse-net
 
   ranger-admin:
     build:
@@ -169,24 +333,21 @@ services:
       timeout: 15s
       retries: 15
 
-#   # ─────────────────────────────────────────────
-#   # APACHE RANGER – Trino Plugin (UserSync)
-#   # ─────────────────────────────────────────────
-#   ranger-usersync:
-#     build:
-#       context: ./ranger
-#       dockerfile: Dockerfile.usersync
-#     image: ranger-usersync:latest
-#     container_name: ranger-usersync
-#     hostname: ranger-usersync
-#     depends_on:
-#       ranger-admin:
-#         condition: service_healthy
-#     environment:
-#       RANGER_ADMIN_URL: http://ranger-admin:6080
-#       SYNC_SOURCE: unix
-#     networks:
-#       - datalakehouse-net
+  ranger-usersync:
+    build:
+      context: ./ranger
+      dockerfile: Dockerfile.usersync
+    image: ranger-usersync:latest
+    container_name: ranger-usersync
+    hostname: ranger-usersync
+    depends_on:
+      ranger-admin:
+        condition: service_healthy
+    environment:
+      RANGER_ADMIN_URL: http://ranger-admin:6080
+      SYNC_SOURCE: unix
+    networks:
+      - datalakehouse-net
 
 #   # ─────────────────────────────────────────────
 #   # JUPYTER NOTEBOOK (optional – for development)
@@ -223,3 +384,7 @@ volumes:
   postgres_data:
   spark_data:
   ranger_logs:
+  kafka-data-0:
+  kafka-data-1:
+  kafka-data-2:
+  postgres_keycloak_data:
