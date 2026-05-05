@@ -306,25 +306,14 @@ services:
 
   ranger-admin:
     build:
-      context: ./ranger
+      context: ./ranger-admin
       dockerfile: Dockerfile
     container_name: ranger-admin
     hostname: ranger-admin
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
-    # environment:
-    #   RANGER_DB_HOST: postgres
-    #   RANGER_DB_PORT: 5432
-    #   RANGER_DB_NAME: ranger
-    #   RANGER_DB_USER: postgres
-    #   RANGER_DB_PASS: postgres123
-    #   RANGER_ADMIN_PASSWORD: rangerR0cks!
     ports:
       - "6080:6080"
     volumes:
-      # - ./ranger/conf/install.properties:/opt/ranger/install.properties
-      - ranger_logs:/var/log/ranger
+      - ./ranger-admin/conf/install.properties:/opt/ranger/admin/install.properties
     networks:
       - datalakehouse-net
     healthcheck:
